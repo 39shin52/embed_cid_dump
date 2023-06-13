@@ -1,14 +1,25 @@
+
+
 use async_std::stream::StreamExt;
 use ipfs_embed::{Config, DefaultParams, Ipfs, Block};
 use libipld::{multihash::Code};
 use libipld::cbor::DagCborCodec;
 use libipld::DagCbor;
+use std::fs::File;
+use std::io::Read;
 
 #[derive(Clone, DagCbor, Debug, Eq, PartialEq)]
 struct Identity {
     id: u64,
     name: String,
     age: u8,
+}
+
+async fn file_open(path: &str) {
+    let mut f = File::open(path).expect("file not found");
+    let mut buf = Vec::new();
+    let _ = f.read_to_end(&mut buf);
+    println!("file: {:?}", buf)
 }
 
 #[async_std::main]
@@ -23,6 +34,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     let str = String::from("hello world");
+    file_open("../test.txt").await;
 
     // block作成
     let identity_block = Block::<DefaultParams>::encode(DagCborCodec, Code::Sha2_256,&identity).unwrap();
