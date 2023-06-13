@@ -1,25 +1,28 @@
-
-
+use async_std::io;
 use async_std::stream::StreamExt;
 use ipfs_embed::{Config, DefaultParams, Ipfs, Block};
 use libipld::{multihash::Code};
 use libipld::cbor::DagCborCodec;
-use libipld::DagCbor;
 use std::fs::File;
 use std::io::Read;
 
-#[derive(Clone, DagCbor, Debug, Eq, PartialEq)]
-struct Identity {
-    id: u64,
-    name: String,
-    age: u8,
+async fn file_open(path: &str) -> String {
+    let path: String = path.lines().collect::<String>();
+    println!("Input Path: {:?}", path);
+    println!("--------------------");
+    let mut f = File::open(path).expect("file not found");
+    let mut buf = String::new();
+    f.read_to_string(&mut buf).expect("failed to read file");
+    buf
 }
 
-async fn file_open(path: &str) {
-    let mut f = File::open(path).expect("file not found");
-    let mut buf = Vec::new();
-    let _ = f.read_to_end(&mut buf);
-    println!("file: {:?}", buf)
+fn hex(bytes: &[u8]) -> String {
+    let mut string: String = String::new();
+    for s in bytes {
+        let str = &format!("{:02X}", s) as &str;
+        string += str;
+    }
+    string
 }
 
 #[async_std::main]
@@ -27,42 +30,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut ipfs = Ipfs::<DefaultParams>::new(Config::default()).await?;
     ipfs.listen_on("/ip4/127.0.0.1/tcp/4001".parse()?).next().await.unwrap();
 
-    let identity = Identity {
-        id: 0,
-        name: "David Craven".into(),
-        age: 26,
-    };
+    println!("--------------------");
+    let mut input: String = String::new();
+    io::stdin().read_line(&mut input).await.expect("failed to read line");
+    let buf = file_open(&input).await;
+    println!("original: {:?}", buf);
 
-    let str = String::from("hello world");
-    file_open("../test.txt").await;
+    let file_block =Block::<DefaultParams>::encode(DagCborCodec, Code::Sha2_256, &buf).unwrap();
+    println!("--------------------");
 
-    // block作成
-    let identity_block = Block::<DefaultParams>::encode(DagCborCodec, Code::Sha2_256,&identity).unwrap();
-    println!("insert identity block: {:?}", identity_block);
-    // blockからCIDを取得
-    let identity_cid = *identity_block.cid();
-    println!("identity_cid: {:?}", identity_cid);
-    // ipfs addする
-    ipfs.insert(identity_block)?;
+    let file_cid = *file_block.cid();
+    println!("file_cid: {:?}", file_cid);
+    ipfs.insert(file_block)?;
 
-    let str_block = Block::<DefaultParams>::encode(DagCborCodec, Code::Sha2_256, &str).unwrap();
-    println!("insert string block: {:?}", str_block);
-    let str_cid = *str_block.cid();
-    println!("str_cid: {:?}", str_cid);
-    ipfs.insert(str_block)?;
+    let get_file_block = ipfs.get(&file_cid)?;
+    let data = get_file_block.data();
+    println!("--------------------");
+    
+    let res = hex(data);
+    println!("res: {:?}", res);
+    println!("--------------------");
 
-    // ipfs getする(CIDは29行目で取得しておいたもの)
-    let get_identity_block = ipfs.get(&identity_cid)?;
-    println!("get_identity_block: {:?}", get_identity_block);
-    // 取得したblockをデコード
-    let identity_rep:Identity = get_identity_block.decode()?;
-    println!("identity: {:?}", identity_rep);
-    // addしたものとgetしたものを比較
-    assert_eq!(identity,identity_rep);
-
-    let get_str_block = ipfs.get(&str_cid)?;
-    println!("get_str_block: {:?}", get_str_block.data());
-
-    // println!("identity.name: {}, block: {}, cid: {}", identity.name, block.to_string(), cid);
     Ok(())
 }
