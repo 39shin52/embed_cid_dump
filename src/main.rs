@@ -41,14 +41,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let file_cid = *file_block.cid();
     println!("file_cid: {:?}", file_cid);
-    ipfs.insert(file_block)?;
 
-    let get_file_block = ipfs.get(&file_cid)?;
-    let data = get_file_block.data();
+    let data = file_block.data();
     println!("--------------------");
-    
+
     let res = hex(data);
-    println!("res: {:?}", res);
+    println!("block: {:?}", res);
     println!("--------------------");
 
     Ok(())
