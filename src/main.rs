@@ -1,6 +1,5 @@
 use async_std::io;
-use async_std::stream::StreamExt;
-use ipfs_embed::{Config, DefaultParams, Ipfs, Block};
+use ipfs_embed::{DefaultParams, Block};
 use libipld::{multihash::Code};
 use libipld::cbor::DagCborCodec;
 use std::fs::File;
@@ -27,9 +26,6 @@ fn hex(bytes: &[u8]) -> String {
 
 #[async_std::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut ipfs = Ipfs::<DefaultParams>::new(Config::default()).await?;
-    ipfs.listen_on("/ip4/127.0.0.1/tcp/4001".parse()?).next().await.unwrap();
-
     println!("--------------------");
     let mut input: String = String::new();
     io::stdin().read_line(&mut input).await.expect("failed to read line");
